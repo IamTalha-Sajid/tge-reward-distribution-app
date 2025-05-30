@@ -13,12 +13,6 @@ export default function SourceTokenTab() {
   const [step, setStep] = useState<'idle' | 'approving' | 'approved' | 'unlocking'>('idle');
   const { address } = useAccount();
 
-  const { data: unclaimedTokens, isLoading: isLoadingUnclaimed } = useReadContract({
-    address: CONTRACTS.sourceToken.address as `0x${string}`,
-    abi: CONTRACTS.sourceToken.abi,
-    functionName: 'getUnclaimedTokens',
-  });
-
   const { writeContract: approve, data: approveData, isPending: isPreparingApprove } = useWriteContract();
   const { writeContract: initiateUnlock, data: unlockData, isPending: isPreparingUnlock } = useWriteContract();
   const { writeContract: fulfillUnlock, data: fulfillData, isPending: isPreparingFulfill } = useWriteContract();
