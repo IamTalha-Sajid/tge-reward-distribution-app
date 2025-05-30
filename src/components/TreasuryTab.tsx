@@ -21,15 +21,15 @@ export default function TreasuryTab() {
   const { writeContract: mintTokens, data: mintData, isPending: isPreparingMint } = useWriteContract();
   const { writeContract: setUnlockOption, data: unlockOptionData, isPending: isPreparingUnlockOption } = useWriteContract();
 
-  const { isLoading: isSending, isError: isSendError } = useTransaction({
+  const { isLoading: isSending } = useTransaction({
     hash: sendData,
   });
 
-  const { isLoading: isMinting, isError: isMintError } = useTransaction({
+  const { isLoading: isMinting } = useTransaction({
     hash: mintData,
   });
 
-  const { isLoading: isSettingUnlockOption, isError: isUnlockOptionError } = useTransaction({
+  const { isLoading: isSettingUnlockOption } = useTransaction({
     hash: unlockOptionData,
   });
 

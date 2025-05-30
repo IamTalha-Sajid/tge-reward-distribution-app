@@ -14,7 +14,7 @@ export default function SourceTokenTab() {
   const { address } = useAccount();
 
   const { writeContract: approve, data: approveData, isPending: isPreparingApprove } = useWriteContract();
-  const { writeContract: initiateUnlock, data: unlockData, isPending: isPreparingUnlock } = useWriteContract();
+  const { writeContract: initiateUnlock, data: unlockData } = useWriteContract();
   const { writeContract: fulfillUnlock, data: fulfillData, isPending: isPreparingFulfill } = useWriteContract();
 
   const { isLoading: isApproving, isSuccess: isApproveSuccess } = useTransaction({ hash: approveData });
@@ -238,7 +238,14 @@ export default function SourceTokenTab() {
                 {[
                   ...(Array.isArray(unfulfilledUnlocks) ? unfulfilledUnlocks : []),
                   ...(Array.isArray(fulfilledUnlocks) ? fulfilledUnlocks : [])
-                ].map((unlock: any, i: number) => (
+                ].map((unlock: {
+                  id: string;
+                  sourceAmount: bigint;
+                  targetAmount: bigint;
+                  lockTime: bigint;
+                  unlockTime: bigint;
+                  fulfilled: boolean;
+                }) => (
                   <tr key={unlock.id} className="border-b">
                     <td className="px-2 py-1 !text-black">{unlock.id}</td>
                     <td className="px-2 py-1 !text-black">{Number(formatUnits(unlock.sourceAmount, 18)).toFixed(2)}</td>
