@@ -1,9 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWriteContract, useAccount, useTransaction, useReadContract } from 'wagmi';
+import { useWriteContract, useAccount, useTransaction, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACTS } from '@/config/contracts';
 import { parseEther, formatUnits } from 'viem';
+
+interface UnlockOption {
+  id: number;
+  name: string;
+  description: string;
+  cliffSeconds: bigint;
+  conversionRatePercentage: number;
+}
 
 export default function TreasuryTab() {
   const [amount, setAmount] = useState('');
@@ -39,6 +47,26 @@ export default function TreasuryTab() {
     abi: CONTRACTS.sourceToken.abi,
     functionName: 'balanceOf',
     args: [CONTRACTS.treasury.address as `0x${string}`],
+  });
+
+  // Read unlock options
+  const { data: unlockOptions, isLoading: isLoadingOptions } = useReadContract({
+    address: CONTRACTS.treasury.address as `0x${string}`,
+    abi: CONTRACTS.treasury.abi,
+    functionName: 'unlockOptions',
+  }) as { data: UnlockOption[] | undefined, isLoading: boolean };
+
+  // Read current balance
+  const { data: balance, isLoading: isLoadingBalance } = useReadContract({
+    address: CONTRACTS.treasury.address as `0x${string}`,
+    abi: CONTRACTS.treasury.abi,
+    functionName: 'balance',
+  });
+
+  // Set balance
+  const { writeContract: setBalanceWrite, data: setBalanceData } = useWriteContract();
+  const { isLoading: isSettingBalance, isSuccess: isSetBalanceSuccess } = useWaitForTransactionReceipt({ 
+    hash: setBalanceData,
   });
 
   const [mounted, setMounted] = useState(false);
@@ -131,6 +159,30 @@ export default function TreasuryTab() {
     }
   };
 
+  const handleSetBalance = async () => {
+    if (!amount) return;
+    setError(null);
+    
+    try {
+      await setBalanceWrite({
+        address: CONTRACTS.treasury.address as `0x${string}`,
+        abi: CONTRACTS.treasury.abi,
+        functionName: 'setBalance',
+        args: [parseEther(amount)],
+      });
+    } catch (error: unknown) {
+      console.error('Error setting balance:', error);
+      setError(error instanceof Error ? error.message : 'Failed to set balance');
+    }
+  };
+
+  useEffect(() => {
+    if (isSetBalanceSuccess) {
+      setAmount('');
+      setError(null);
+    }
+  }, [isSetBalanceSuccess]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -145,7 +197,7 @@ export default function TreasuryTab() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4 !text-black">Send Source Tokens</h2>
+        <h2 className="text-xl font-semibold mb-4 !text-black">Send Source Tokens (from Treasury to a Recipient)</h2>
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
@@ -197,7 +249,7 @@ export default function TreasuryTab() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4 !text-black">Mint Source Tokens</h2>
+        <h2 className="text-xl font-semibold mb-4 !text-black">Mint Source Tokens (to Treasury)</h2>
         <form onSubmit={handleMintTokens} className="space-y-4">
           <div>
             <label className="block text-sm font-medium !text-black mb-1">
@@ -230,7 +282,7 @@ export default function TreasuryTab() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4 !text-black">Set Unlock Option</h2>
+        <h2 className="text-xl font-semibold mb-4 !text-black">Set Unlock Option (for a new unlock option)</h2>
         <form onSubmit={handleSetUnlockOption} className="space-y-4">
           <div>
             <label className="block text-sm font-medium !text-black mb-1">
@@ -318,6 +370,39 @@ export default function TreasuryTab() {
                 : 'Set Unlock Option'}
           </button>
         </form>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Unlock Options</h2>
+        <div className="space-y-4">
+          {isLoadingOptions ? (
+            <div className="!text-black font-medium">Loading options...</div>
+          ) : unlockOptions && unlockOptions.length > 0 ? (
+            <div className="grid gap-4">
+              {unlockOptions.map((option) => (
+                <div key={option.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold !text-black">{option.name}</h3>
+                    <span className="text-sm font-medium !text-black">ID: {option.id}</span>
+                  </div>
+                  <p className="!text-black font-medium mb-2">{option.description}</p>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium !text-black">Cliff Period:</span>
+                      <span className="ml-2 !text-black">{Number(option.cliffSeconds) / 86400} days</span>
+                    </div>
+                    <div>
+                      <span className="font-medium !text-black">Conversion Rate:</span>
+                      <span className="ml-2 !text-black">{option.conversionRatePercentage}%</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="!text-black font-medium">No unlock options available</div>
+          )}
+        </div>
       </div>
     </div>
   );

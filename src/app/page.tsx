@@ -5,9 +5,10 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import TreasuryTab from '@/components/TreasuryTab';
 import SourceTokenTab from '@/components/SourceTokenTab';
+import RegistryTab from '@/components/RegistryTab';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'treasury' | 'sourceToken'>('treasury');
+  const [activeTab, setActiveTab] = useState('source');
   const { isConnected } = useAccount();
 
   return (
@@ -23,27 +24,41 @@ export default function Home() {
             <div className="flex space-x-4 mb-8">
               <button
                 className={`px-4 py-2 rounded-lg ${
+                  activeTab === 'source'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+                onClick={() => setActiveTab('source')}
+              >
+                Source Token
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg ${
                   activeTab === 'treasury'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700'
                 }`}
                 onClick={() => setActiveTab('treasury')}
               >
-                Admin Actions
+                Treasury
               </button>
               <button
                 className={`px-4 py-2 rounded-lg ${
-                  activeTab === 'sourceToken'
+                  activeTab === 'registry'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700'
                 }`}
-                onClick={() => setActiveTab('sourceToken')}
+                onClick={() => setActiveTab('registry')}
               >
-                User Actions
+                Registry
               </button>
             </div>
 
-            {activeTab === 'treasury' ? <TreasuryTab /> : <SourceTokenTab />}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              {activeTab === 'source' && <SourceTokenTab />}
+              {activeTab === 'treasury' && <TreasuryTab />}
+              {activeTab === 'registry' && <RegistryTab />}
+            </div>
           </>
         ) : (
           <div className="text-center py-12">
@@ -52,7 +67,7 @@ export default function Home() {
             </p>
           </div>
         )}
-    </div>
+      </div>
     </main>
   );
 }
