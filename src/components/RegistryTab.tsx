@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACTS } from '@/config/contracts';
-import { parseEther } from 'viem';
 
 export default function RegistryTab() {
   const [heartbeatPeriod, setHeartbeatPeriod] = useState('');

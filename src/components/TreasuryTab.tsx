@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWriteContract, useAccount, useTransaction, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useAccount, useTransaction, useReadContract } from 'wagmi';
 import { CONTRACTS } from '@/config/contracts';
 import { parseEther, formatUnits } from 'viem';
 
@@ -55,19 +55,6 @@ export default function TreasuryTab() {
     abi: CONTRACTS.treasury.abi,
     functionName: 'unlockOptions',
   }) as { data: UnlockOption[] | undefined, isLoading: boolean };
-
-  // Read current balance
-  const { data: balance, isLoading: isLoadingBalance } = useReadContract({
-    address: CONTRACTS.treasury.address as `0x${string}`,
-    abi: CONTRACTS.treasury.abi,
-    functionName: 'balance',
-  });
-
-  // Set balance
-  const { writeContract: setBalanceWrite, data: setBalanceData } = useWriteContract();
-  const { isLoading: isSettingBalance, isSuccess: isSetBalanceSuccess } = useWaitForTransactionReceipt({ 
-    hash: setBalanceData,
-  });
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -158,30 +145,6 @@ export default function TreasuryTab() {
       setError(error instanceof Error ? error.message : 'Failed to set unlock option');
     }
   };
-
-  const handleSetBalance = async () => {
-    if (!amount) return;
-    setError(null);
-    
-    try {
-      await setBalanceWrite({
-        address: CONTRACTS.treasury.address as `0x${string}`,
-        abi: CONTRACTS.treasury.abi,
-        functionName: 'setBalance',
-        args: [parseEther(amount)],
-      });
-    } catch (error: unknown) {
-      console.error('Error setting balance:', error);
-      setError(error instanceof Error ? error.message : 'Failed to set balance');
-    }
-  };
-
-  useEffect(() => {
-    if (isSetBalanceSuccess) {
-      setAmount('');
-      setError(null);
-    }
-  }, [isSetBalanceSuccess]);
 
   return (
     <div className="space-y-6">
