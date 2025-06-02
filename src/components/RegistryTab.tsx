@@ -19,12 +19,24 @@ export default function RegistryTab() {
     hash: setHeartbeatPeriodData,
   });
 
+  // Set heartbeat reward
+  const { writeContract: setHeartbeatRewardWrite, data: setHeartbeatRewardData } = useWriteContract();
+  const { isLoading: isSettingReward, isSuccess: isSetRewardSuccess } = useWaitForTransactionReceipt({ 
+    hash: setHeartbeatRewardData,
+  });
+
   React.useEffect(() => {
     if (isSetHeartbeatSuccess) {
       setHeartbeatPeriod('');
       setError(null);
     }
   }, [isSetHeartbeatSuccess]);
+
+  React.useEffect(() => {
+    if (isSetRewardSuccess) {
+      setError(null);
+    }
+  }, [isSetRewardSuccess]);
 
   const handleSetHeartbeatPeriod = async () => {
     if (!heartbeatPeriod) return;
@@ -40,6 +52,22 @@ export default function RegistryTab() {
     } catch (error: unknown) {
       console.error('Error setting heartbeat period:', error);
       setError(error instanceof Error ? error.message : 'Failed to set heartbeat period');
+    }
+  };
+
+  const handleSetRewardToZero = async () => {
+    setError(null);
+    
+    try {
+      await setHeartbeatRewardWrite({
+        address: CONTRACTS.registry.address as `0x${string}`,
+        abi: CONTRACTS.registry.abi,
+        functionName: 'setHeartbeatReward',
+        args: [BigInt(0)],
+      });
+    } catch (error: unknown) {
+      console.error('Error setting reward to zero:', error);
+      setError(error instanceof Error ? error.message : 'Failed to set reward to zero');
     }
   };
 
@@ -89,6 +117,29 @@ export default function RegistryTab() {
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSettingHeartbeat ? 'Setting...' : 'Set Heartbeat Period'}
+          </button>
+        </div>
+      </div>
+
+      {/* Set Rewards to Zero Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Set Rewards to Zero</h2>
+        <div className="space-y-4">
+          <p className="text-sm !text-black">
+            This will set the rewards distributed by the registry to zero. This action cannot be undone.
+          </p>
+          {error && (
+            <div className="text-red-500 text-sm">{error}</div>
+          )}
+          {isSetRewardSuccess && (
+            <div className="text-green-500 text-sm">Rewards have been set to zero successfully!</div>
+          )}
+          <button
+            onClick={handleSetRewardToZero}
+            disabled={isSettingReward}
+            className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSettingReward ? 'Setting...' : 'Set Rewards to Zero'}
           </button>
         </div>
       </div>
