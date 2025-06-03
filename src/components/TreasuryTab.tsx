@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useWriteContract, useAccount, useTransaction, useReadContract } from 'wagmi';
+import React, { useState, useEffect } from 'react';
+import { useWriteContract, useAccount, useTransaction, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACTS } from '@/config/contracts';
 import { parseEther, formatUnits } from 'viem';
 
@@ -22,6 +22,8 @@ export default function TreasuryTab() {
   const [unlockOptionDescription, setUnlockOptionDescription] = useState('90 day lock period with 100% conversion');
   const [unlockOptionCliff, setUnlockOptionCliff] = useState('90');
   const [unlockOptionRate, setUnlockOptionRate] = useState('100');
+  const [wallets, setWallets] = useState('');
+  const [amounts, setAmounts] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
 
@@ -146,6 +148,51 @@ export default function TreasuryTab() {
     }
   };
 
+  // Set source tokens
+  const { writeContract: sendSourceTokensWrite, data: sendSourceTokensData } = useWriteContract();
+  const { isLoading: isSendingTokens, isSuccess: isSendTokensSuccess } = useWaitForTransactionReceipt({ 
+    hash: sendSourceTokensData,
+  });
+
+  useEffect(() => {
+    if (isSendTokensSuccess) {
+      setAmount('');
+      setRecipient('');
+      setError(null);
+    }
+  }, [isSendTokensSuccess]);
+
+  const handleSendSourceTokens = async () => {
+    if (!wallets || !amounts) return;
+    setError(null);
+    
+    try {
+      const walletList = wallets.split(',').map(w => w.trim());
+      const amountList = amounts.split(',').map(a => parseEther(a.trim()));
+      
+      if (walletList.length !== amountList.length) {
+        throw new Error('Number of wallets must match number of amounts');
+      }
+
+      const tokenReceivers = walletList.map((wallet, index) => ({
+        receiver: wallet as `0x${string}`,
+        amount: amountList[index].toString()
+      }));
+
+      console.log('Sending tokens to:', tokenReceivers);
+      
+      await sendSourceTokensWrite({
+        address: CONTRACTS.treasury.address as `0x${string}`,
+        abi: CONTRACTS.treasury.abi,
+        functionName: 'sendSourceTokens',
+        args: [tokenReceivers],
+      });
+    } catch (error: unknown) {
+      console.error('Error sending source tokens:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send source tokens');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -211,6 +258,54 @@ export default function TreasuryTab() {
         </form>
       </div>
 
+      {/* Send Source Tokens Batch Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Send Source Tokens Batch</h2>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="wallets" className="block text-sm font-medium !text-black mb-1">
+              Wallets (comma-separated, no spaces)
+            </label>
+            <input
+              type="text"
+              id="wallets"
+              value={wallets}
+              onChange={(e) => setWallets(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md !text-black bg-white"
+              placeholder="0x123,0x456,0x789"
+              disabled={isSendingTokens}
+            />
+          </div>
+          <div>
+            <label htmlFor="amounts" className="block text-sm font-medium !text-black mb-1">
+              Amounts in ETH (comma-separated, no spaces)
+            </label>
+            <input
+              type="text"
+              id="amounts"
+              value={amounts}
+              onChange={(e) => setAmounts(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md !text-black bg-white"
+              placeholder="1.5,2.3,0.5"
+              disabled={isSendingTokens}
+            />
+          </div>
+          {error && (
+            <div className="text-red-500 text-sm">{error}</div>
+          )}
+          {isSendTokensSuccess && (
+            <div className="text-green-500 text-sm">Tokens sent successfully!</div>
+          )}
+          <button
+            onClick={handleSendSourceTokens}
+            disabled={isSendingTokens || !wallets || !amounts}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-blue-400"
+          >
+            {isSendingTokens ? 'Sending...' : 'Send Tokens'}
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4 !text-black">Mint Source Tokens (to Treasury)</h2>
         <form onSubmit={handleMintTokens} className="space-y-4">
@@ -227,19 +322,15 @@ export default function TreasuryTab() {
               required
               min="0"
               step="0.000000000000000001"
-              disabled={!mintTokens || isPreparingMint || isMinting}
+              disabled={isPreparingMint || isMinting}
             />
           </div>
           <button
             type="submit"
-            disabled={!mintTokens || isPreparingMint || isMinting}
-            className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+            disabled={isPreparingMint || isMinting || !mintAmount}
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-green-400"
           >
-            {!mintTokens
-              ? 'Loading...'
-              : (isPreparingMint || isMinting)
-                ? (isPreparingMint ? 'Preparing...' : 'Minting...')
-                : 'Mint Tokens'}
+            {isPreparingMint ? 'Preparing...' : isMinting ? 'Minting...' : 'Mint Tokens'}
           </button>
         </form>
       </div>
@@ -259,7 +350,7 @@ export default function TreasuryTab() {
               placeholder="Enter option ID"
               required
               min="1"
-              disabled={!setUnlockOption || isPreparingUnlockOption || isSettingUnlockOption}
+              disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
           <div>
@@ -273,7 +364,7 @@ export default function TreasuryTab() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
               placeholder="Enter option name"
               required
-              disabled={!setUnlockOption || isPreparingUnlockOption || isSettingUnlockOption}
+              disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
           <div>
@@ -287,7 +378,7 @@ export default function TreasuryTab() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
               placeholder="Enter option description"
               required
-              disabled={!setUnlockOption || isPreparingUnlockOption || isSettingUnlockOption}
+              disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
           <div>
@@ -302,7 +393,7 @@ export default function TreasuryTab() {
               placeholder="Enter cliff period in days"
               required
               min="0"
-              disabled={!setUnlockOption || isPreparingUnlockOption || isSettingUnlockOption}
+              disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
           <div>
@@ -318,19 +409,15 @@ export default function TreasuryTab() {
               required
               min="0"
               max="100"
-              disabled={!setUnlockOption || isPreparingUnlockOption || isSettingUnlockOption}
+              disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
           <button
             type="submit"
-            disabled={!setUnlockOption || isPreparingUnlockOption || isSettingUnlockOption}
-            className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+            disabled={isPreparingUnlockOption || isSettingUnlockOption || !unlockOptionId || !unlockOptionName || !unlockOptionDescription || !unlockOptionCliff || !unlockOptionRate}
+            className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-purple-400"
           >
-            {!setUnlockOption
-              ? 'Loading...'
-              : (isPreparingUnlockOption || isSettingUnlockOption)
-                ? (isPreparingUnlockOption ? 'Preparing...' : 'Setting...')
-                : 'Set Unlock Option'}
+            {isPreparingUnlockOption ? 'Preparing...' : isSettingUnlockOption ? 'Setting...' : 'Set Unlock Option'}
           </button>
         </form>
       </div>

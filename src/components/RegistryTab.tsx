@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACTS } from '@/config/contracts';
+import { parseEther } from 'viem';
 
 export default function RegistryTab() {
   const [heartbeatPeriod, setHeartbeatPeriod] = useState('');
+  const [heartbeatReward, setHeartbeatReward] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Read current heartbeat period
@@ -11,6 +13,13 @@ export default function RegistryTab() {
     address: CONTRACTS.registry.address as `0x${string}`,
     abi: CONTRACTS.registry.abi,
     functionName: 'heartbeatPeriodSeconds',
+  });
+
+  // Read current heartbeat reward
+  const { data: currentHeartbeatReward, isLoading: isLoadingHeartbeatReward } = useReadContract({
+    address: CONTRACTS.registry.address as `0x${string}`,
+    abi: CONTRACTS.registry.abi,
+    functionName: 'heartbeatReward',
   });
 
   // Set heartbeat period
@@ -34,6 +43,7 @@ export default function RegistryTab() {
 
   React.useEffect(() => {
     if (isSetRewardSuccess) {
+      setHeartbeatReward('');
       setError(null);
     }
   }, [isSetRewardSuccess]);
@@ -55,7 +65,8 @@ export default function RegistryTab() {
     }
   };
 
-  const handleSetRewardToZero = async () => {
+  const handleSetHeartbeatReward = async () => {
+    if (!heartbeatReward) return;
     setError(null);
     
     try {
@@ -63,11 +74,11 @@ export default function RegistryTab() {
         address: CONTRACTS.registry.address as `0x${string}`,
         abi: CONTRACTS.registry.abi,
         functionName: 'setHeartbeatReward',
-        args: [BigInt(0)],
+        args: [parseEther(heartbeatReward)],
       });
     } catch (error: unknown) {
-      console.error('Error setting reward to zero:', error);
-      setError(error instanceof Error ? error.message : 'Failed to set reward to zero');
+      console.error('Error setting heartbeat reward:', error);
+      setError(error instanceof Error ? error.message : 'Failed to set heartbeat reward');
     }
   };
 
@@ -82,6 +93,20 @@ export default function RegistryTab() {
             <span className="font-medium !text-black">
               {isLoadingHeartbeatPeriod ? 'Loading...' : 
                currentHeartbeatPeriod ? `${Number(currentHeartbeatPeriod)} seconds` : 'Not set'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Current Heartbeat Reward Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Current Heartbeat Reward</h2>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <span className="!text-black">Current Reward:</span>
+            <span className="font-medium !text-black">
+              {isLoadingHeartbeatReward ? 'Loading...' : 
+               currentHeartbeatReward ? `${Number(currentHeartbeatReward) / 1e18} ETH` : 'Not set'}
             </span>
           </div>
         </div>
@@ -121,25 +146,38 @@ export default function RegistryTab() {
         </div>
       </div>
 
-      {/* Set Rewards to Zero Section */}
+      {/* Set Heartbeat Reward Section */}
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4 !text-black">Set Rewards to Zero</h2>
+        <h2 className="text-xl font-semibold mb-4 !text-black">Set Heartbeat Reward</h2>
         <div className="space-y-4">
-          <p className="text-sm !text-black">
-            This will set the rewards distributed by the registry to zero. This action cannot be undone.
-          </p>
+          <div>
+            <label htmlFor="heartbeatReward" className="block text-sm font-medium !text-black mb-1">
+              New Heartbeat Reward (ETH)
+            </label>
+            <input
+              type="number"
+              id="heartbeatReward"
+              value={heartbeatReward}
+              onChange={(e) => setHeartbeatReward(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md !text-black bg-white"
+              placeholder="Enter new heartbeat reward"
+              disabled={isSettingReward}
+              step="any"
+              min="0"
+            />
+          </div>
           {error && (
             <div className="text-red-500 text-sm">{error}</div>
           )}
           {isSetRewardSuccess && (
-            <div className="text-green-500 text-sm">Rewards have been set to zero successfully!</div>
+            <div className="text-green-500 text-sm">Heartbeat reward updated successfully!</div>
           )}
           <button
-            onClick={handleSetRewardToZero}
-            disabled={isSettingReward}
-            className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleSetHeartbeatReward}
+            disabled={isSettingReward || !heartbeatReward}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSettingReward ? 'Setting...' : 'Set Rewards to Zero'}
+            {isSettingReward ? 'Setting...' : 'Set Heartbeat Reward'}
           </button>
         </div>
       </div>
