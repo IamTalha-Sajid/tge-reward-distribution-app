@@ -9,6 +9,7 @@ export default function SourceTokenTab() {
   const [amount, setAmount] = useState('');
   const [unlockId, setUnlockId] = useState('');
   const [unlockBytes, setUnlockBytes] = useState('');
+  const [cancelHash, setCancelHash] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'idle' | 'approving' | 'approved' | 'unlocking'>('idle');
   const { address } = useAccount();
@@ -16,10 +17,12 @@ export default function SourceTokenTab() {
   const { writeContract: approve, data: approveData, isPending: isPreparingApprove } = useWriteContract();
   const { writeContract: initiateUnlock, data: unlockData } = useWriteContract();
   const { writeContract: fulfillUnlock, data: fulfillData, isPending: isPreparingFulfill } = useWriteContract();
+  const { writeContract: cancelUnlock, data: cancelData, isPending: isPreparingCancel } = useWriteContract();
 
   const { isLoading: isApproving, isSuccess: isApproveSuccess } = useTransaction({ hash: approveData });
   const { isLoading: isUnlocking } = useTransaction({ hash: unlockData });
   const { isLoading: isFulfilling } = useTransaction({ hash: fulfillData });
+  const { isLoading: isCanceling } = useTransaction({ hash: cancelData });
 
   // --- Unlocks Section ---
   // Get unfulfilled unlocks count
@@ -133,6 +136,28 @@ export default function SourceTokenTab() {
     }
   };
 
+  const handleCancelUnlock = async () => {
+    setError(null);
+    if (!address) {
+      setError('Please connect your wallet');
+      return;
+    }
+    if (!unlockBytes) {
+      setError('Please enter the unlock hash');
+      return;
+    }
+    try {
+      await cancelUnlock({
+        address: CONTRACTS.treasury.address as `0x${string}`,
+        abi: CONTRACTS.treasury.abi,
+        functionName: 'cancelUnlock',
+        args: [unlockBytes]
+      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to cancel unlock');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -214,6 +239,28 @@ export default function SourceTokenTab() {
           className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
         >
           {isPreparingFulfill ? 'Preparing...' : isFulfilling ? 'Fulfilling...' : 'Fulfill Unlock'}
+        </button>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Cancel Unlock</h2>
+        <label className="block text-sm font-medium !text-black mb-1">
+          Unlock Hash
+        </label>
+        <input
+          type="text"
+          value={cancelHash}
+          onChange={(e) => setCancelHash(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+          placeholder="Enter Unlock Hash"
+          disabled={isPreparingCancel || isCanceling}
+        />
+        <button
+          onClick={handleCancelUnlock}
+          disabled={isPreparingCancel || isCanceling}
+          className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+        >
+          {isPreparingCancel ? 'Preparing...' : isCanceling ? 'Canceling...' : 'Cancel Unlock'}
         </button>
       </div>
 

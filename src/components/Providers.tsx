@@ -16,14 +16,14 @@ const rcadeTrials = {
   },
   rpcUrls: {
     default: {
-      http: ['https://rcade-trials.rpc.caldera.xyz/http'],
+      http: ['https://rcade-trials-v3.rpc.caldera.xyz/http'],
     },
     public: {
-      http: ['https://rcade-trials.rpc.caldera.xyz/http'],
+      http: ['https://rcade-trials-v3.rpc.caldera.xyz/http'],
     },
   },
   blockExplorers: {
-    default: { name: 'RCade Explorer', url: 'https://rcade-trials.explorer.caldera.xyz/' },
+    default: { name: 'RCade Explorer', url: 'https://scan-test.rcade.network/' },
   },
   testnet: true,
 } as const;
