@@ -133,8 +133,7 @@ export default function TreasuryTab() {
 
     try {
       // Convert days to seconds with high precision
-      const daysInSeconds = parseFloat(unlockOptionCliff) * 24 * 60 * 60;
-      const cliffSeconds = BigInt(Math.floor(daysInSeconds));
+      const cliffSeconds = BigInt(unlockOptionCliff);
       const conversionRate = BigInt(unlockOptionRate);
       const id = BigInt(unlockOptionId);
 
