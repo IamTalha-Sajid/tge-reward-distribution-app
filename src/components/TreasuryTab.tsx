@@ -132,7 +132,9 @@ export default function TreasuryTab() {
     }
 
     try {
-      const cliffSeconds = BigInt(parseInt(unlockOptionCliff) * 24 * 60 * 60); // Convert days to seconds
+      // Convert days to seconds with high precision
+      const daysInSeconds = parseFloat(unlockOptionCliff) * 24 * 60 * 60;
+      const cliffSeconds = BigInt(Math.floor(daysInSeconds));
       const conversionRate = BigInt(unlockOptionRate);
       const id = BigInt(unlockOptionId);
 
@@ -393,6 +395,7 @@ export default function TreasuryTab() {
               placeholder="Enter cliff period in days"
               required
               min="0"
+              step="any"
               disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
