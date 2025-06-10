@@ -20,7 +20,7 @@ export default function TreasuryTab() {
   const [unlockOptionId, setUnlockOptionId] = useState('1');
   const [unlockOptionName, setUnlockOptionName] = useState('90 Day Lock');
   const [unlockOptionDescription, setUnlockOptionDescription] = useState('90 day lock period with 100% conversion');
-  const [unlockOptionCliff, setUnlockOptionCliff] = useState('90');
+  const [unlockOptionCliff, setUnlockOptionCliff] = useState('7776000');
   const [unlockOptionRate, setUnlockOptionRate] = useState('100');
   const [wallets, setWallets] = useState('');
   const [amounts, setAmounts] = useState('');
@@ -385,17 +385,17 @@ export default function TreasuryTab() {
           </div>
           <div>
             <label className="block text-sm font-medium !text-black mb-1">
-              Cliff Period (days)
+              Cliff Period (seconds)
             </label>
             <input
               type="number"
               value={unlockOptionCliff}
               onChange={(e) => setUnlockOptionCliff(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
-              placeholder="Enter cliff period in days"
+              placeholder="Enter cliff period in seconds"
               required
               min="0"
-              step="any"
+              step="1"
               disabled={isPreparingUnlockOption || isSettingUnlockOption}
             />
           </div>
@@ -442,7 +442,7 @@ export default function TreasuryTab() {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="font-medium !text-black">Cliff Period:</span>
-                      <span className="ml-2 !text-black">{Number(option.cliffSeconds) / 86400} days</span>
+                      <span className="ml-2 !text-black">{Number(option.cliffSeconds)} seconds</span>
                     </div>
                     <div>
                       <span className="font-medium !text-black">Conversion Rate:</span>
