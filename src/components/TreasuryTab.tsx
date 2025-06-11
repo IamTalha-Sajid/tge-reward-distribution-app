@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useWriteContract, useAccount, useTransaction, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useAccount, useTransaction, useReadContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { CONTRACTS } from '@/config/contracts';
 import { parseEther, formatUnits } from 'viem';
 
@@ -49,6 +49,11 @@ export default function TreasuryTab() {
     abi: CONTRACTS.sourceToken.abi,
     functionName: 'balanceOf',
     args: [CONTRACTS.treasury.address as `0x${string}`],
+  });
+
+  // Read treasury Native token balance
+  const { data: treasuryBalanceL3, isLoading: isLoadingTreasuryBalanceL3 } = useBalance({
+    address: CONTRACTS.treasury.address as `0x${string}`,
   });
 
   // Read unlock options
@@ -204,6 +209,17 @@ export default function TreasuryTab() {
             : `${typeof treasuryBalance === 'bigint'
                 ? Number(formatUnits(treasuryBalance, 18)).toFixed(2)
                 : '0'} tokens`}
+        </p>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Treasury Native Balance (L3 Chain)</h2>
+        <p className="mb-4 text-lg !text-black">
+          {!mounted || isLoadingTreasuryBalanceL3
+            ? 'Loading...'
+            : treasuryBalanceL3
+                ? `${Number(treasuryBalanceL3.formatted).toFixed(4)} ${treasuryBalanceL3.symbol}`
+                : '0 ETH'}
         </p>
       </div>
 
