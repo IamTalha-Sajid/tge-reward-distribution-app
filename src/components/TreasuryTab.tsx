@@ -17,6 +17,7 @@ export default function TreasuryTab() {
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState('');
   const [mintAmount, setMintAmount] = useState('');
+  const [nonce, setNonce] = useState('');
   const [unlockOptionId, setUnlockOptionId] = useState('1');
   const [unlockOptionName, setUnlockOptionName] = useState('90 Day Lock');
   const [unlockOptionDescription, setUnlockOptionDescription] = useState('90 day lock period with 100% conversion');
@@ -62,6 +63,31 @@ export default function TreasuryTab() {
     abi: CONTRACTS.treasury.abi,
     functionName: 'unlockOptions',
   }) as { data: UnlockOption[] | undefined, isLoading: boolean };
+
+  // Read current authority address
+  const { data: authorityAddress, isLoading: isLoadingAuthority } = useReadContract({
+    address: CONTRACTS.treasury.address as `0x${string}`,
+    abi: CONTRACTS.treasury.abi,
+    functionName: 'authority',
+  });
+
+  // State for new authority input
+  const [newAuthority, setNewAuthority] = useState('');
+  const { writeContract: setAuthority, data: setAuthorityData, isPending: isSettingAuthority } = useWriteContract();
+  const { isLoading: isSettingAuthorityTx } = useTransaction({ hash: setAuthorityData });
+
+  // hasRole checker state
+  const [roleToCheck, setRoleToCheck] = useState('');
+  const [addressToCheck, setAddressToCheck] = useState('');
+  const [shouldCheckRole, setShouldCheckRole] = useState(false);
+
+  const { data: hasRoleResult, isLoading: isCheckingRole } = useReadContract({
+    address: CONTRACTS.treasury.address as `0x${string}`,
+    abi: CONTRACTS.treasury.abi,
+    functionName: 'hasRole',
+    args: [roleToCheck, addressToCheck],
+    query: { enabled: shouldCheckRole && !!roleToCheck && !!addressToCheck },
+  });
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -156,7 +182,7 @@ export default function TreasuryTab() {
 
   // Set source tokens
   const { writeContract: sendSourceTokensWrite, data: sendSourceTokensData } = useWriteContract();
-  const { isLoading: isSendingTokens, isSuccess: isSendTokensSuccess } = useWaitForTransactionReceipt({ 
+  const { isLoading: isSendingTokens, isSuccess: isSendTokensSuccess } = useWaitForTransactionReceipt({
     hash: sendSourceTokensData,
   });
 
@@ -171,11 +197,11 @@ export default function TreasuryTab() {
   const handleSendSourceTokens = async () => {
     if (!wallets || !amounts) return;
     setError(null);
-    
+
     try {
       const walletList = wallets.split(',').map(w => w.trim());
       const amountList = amounts.split(',').map(a => parseEther(a.trim()));
-      
+
       if (walletList.length !== amountList.length) {
         throw new Error('Number of wallets must match number of amounts');
       }
@@ -186,7 +212,7 @@ export default function TreasuryTab() {
       }));
 
       console.log('Sending tokens to:', tokenReceivers);
-      
+
       await sendSourceTokensWrite({
         address: CONTRACTS.treasury.address as `0x${string}`,
         abi: CONTRACTS.treasury.abi,
@@ -199,6 +225,70 @@ export default function TreasuryTab() {
     }
   };
 
+  const { writeContract: sendSourceTokensWithNonce, data: sendWithNonceData, isPending: isPreparingWithNonce } = useWriteContract();
+  const { isLoading: isSendingWithNonce } = useTransaction({
+    hash: sendWithNonceData,
+  });
+
+  const handleSendTokensWithNonce = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!amount || !recipient || !nonce) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (!address) {
+      setError('Please connect your wallet');
+      return;
+    }
+
+    try {
+      const amountInWei = parseEther(amount);
+      const nonceValue = BigInt(nonce);
+      await sendSourceTokensWithNonce({
+        address: CONTRACTS.treasury.address as `0x${string}`,
+        abi: CONTRACTS.treasury.abi,
+        functionName: 'sendSourceTokensToWithNonce',
+        args: [recipient, amountInWei, nonceValue],
+      });
+    } catch (error) {
+      console.error('Error sending tokens with nonce:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send tokens');
+    }
+  };
+
+  const handleSetAuthority = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!newAuthority) {
+      setError('Please enter a new authority address.');
+      return;
+    }
+    if (!address) {
+      setError('Please connect your wallet.');
+      return;
+    }
+    try {
+      await setAuthority({
+        address: CONTRACTS.treasury.address as `0x${string}`,
+        abi: CONTRACTS.treasury.abi,
+        functionName: 'setAuthority',
+        args: [newAuthority],
+      });
+    } catch (error) {
+      console.error('Error setting authority:', error);
+      setError(error instanceof Error ? error.message : 'Failed to set authority');
+    }
+  };
+
+  const handleCheckRole = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShouldCheckRole(false);
+    setTimeout(() => setShouldCheckRole(true), 0);
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -207,8 +297,8 @@ export default function TreasuryTab() {
           {!mounted || isLoadingTreasuryBalance
             ? 'Loading...'
             : `${typeof treasuryBalance === 'bigint'
-                ? Number(formatUnits(treasuryBalance, 18)).toFixed(2)
-                : '0'} tokens`}
+              ? Number(formatUnits(treasuryBalance, 18)).toFixed(2)
+              : '0'} tokens`}
         </p>
       </div>
 
@@ -218,8 +308,8 @@ export default function TreasuryTab() {
           {!mounted || isLoadingTreasuryBalanceL3
             ? 'Loading...'
             : treasuryBalanceL3
-                ? `${Number(treasuryBalanceL3.formatted).toFixed(4)} ${treasuryBalanceL3.symbol}`
-                : '0 ETH'}
+              ? `${Number(treasuryBalanceL3.formatted).toFixed(4)} ${treasuryBalanceL3.symbol}`
+              : '0 ETH'}
         </p>
       </div>
 
@@ -271,6 +361,74 @@ export default function TreasuryTab() {
               : (isPreparing || isSending)
                 ? (isPreparing ? 'Preparing...' : 'Sending...')
                 : 'Send Tokens'}
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Send Source Tokens with Nonce</h2>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+        <form onSubmit={handleSendTokensWithNonce} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">
+              Recipient Address
+            </label>
+            <input
+              type="text"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+              disabled={!sendSourceTokensWithNonce || isPreparingWithNonce || isSendingWithNonce}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">
+              Amount
+            </label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="Enter amount"
+              required
+              min="0"
+              step="0.000000000000000001"
+              disabled={!sendSourceTokensWithNonce || isPreparingWithNonce || isSendingWithNonce}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">
+              Nonce
+            </label>
+            <input
+              type="number"
+              value={nonce}
+              onChange={(e) => setNonce(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="Enter nonce"
+              required
+              min="0"
+              step="1"
+              disabled={!sendSourceTokensWithNonce || isPreparingWithNonce || isSendingWithNonce}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!sendSourceTokensWithNonce || isPreparingWithNonce || isSendingWithNonce}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+          >
+            {!sendSourceTokensWithNonce
+              ? 'Loading...'
+              : (isPreparingWithNonce || isSendingWithNonce)
+                ? (isPreparingWithNonce ? 'Preparing...' : 'Sending...')
+                : 'Send Tokens with Nonce'}
           </button>
         </form>
       </div>
@@ -471,6 +629,81 @@ export default function TreasuryTab() {
             <div className="!text-black font-medium">No unlock options available</div>
           )}
         </div>
+      </div>
+
+      {/* Authority Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Treasury Authority</h2>
+        <div className="mb-4">
+          <span className="font-medium !text-black">Current Authority: </span>
+          {isLoadingAuthority ? (
+            <span className="!text-black">Loading...</span>
+          ) : (
+            <span className="!text-black">{authorityAddress as string}</span>
+          )}
+        </div>
+        <form onSubmit={handleSetAuthority} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">Set New Authority Address</label>
+            <input
+              type="text"
+              value={newAuthority}
+              onChange={(e) => setNewAuthority(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+              disabled={isSettingAuthority || isSettingAuthorityTx}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSettingAuthority || isSettingAuthorityTx}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+          >
+            {isSettingAuthority || isSettingAuthorityTx ? 'Setting...' : 'Set Authority'}
+          </button>
+        </form>
+      </div>
+
+      {/* hasRole Checker Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Check Role (hasRole)</h2>
+        <form onSubmit={handleCheckRole} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">Role (bytes32 hex)</label>
+            <input
+              type="text"
+              value={roleToCheck}
+              onChange={(e) => setRoleToCheck(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">Address to Check</label>
+            <input
+              type="text"
+              value={addressToCheck}
+              onChange={(e) => setAddressToCheck(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isCheckingRole}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+          >
+            {isCheckingRole ? 'Checking...' : 'Check Role'}
+          </button>
+        </form>
+        {shouldCheckRole && !isCheckingRole && hasRoleResult !== undefined && (
+          <div className="mt-4 font-medium !text-black">
+            Result: {hasRoleResult ? 'Has Role' : 'Does NOT have Role'}
+          </div>
+        )}
       </div>
     </div>
   );

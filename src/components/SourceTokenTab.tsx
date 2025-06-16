@@ -58,6 +58,31 @@ export default function SourceTokenTab() {
     query: { enabled: !!address && typeof fulfilledCount === 'bigint' && fulfilledCount > 0 },
   });
 
+  // Read current authority address
+  const { data: authorityAddress, isLoading: isLoadingAuthority } = useReadContract({
+    address: CONTRACTS.sourceToken.address as `0x${string}`,
+    abi: CONTRACTS.sourceToken.abi,
+    functionName: 'authority',
+  });
+
+  // State for new authority input
+  const [newAuthority, setNewAuthority] = useState('');
+  const { writeContract: setAuthority, data: setAuthorityData, isPending: isSettingAuthority } = useWriteContract();
+  const { isLoading: isSettingAuthorityTx } = useTransaction({ hash: setAuthorityData });
+
+  // hasRole checker state
+  const [roleToCheck, setRoleToCheck] = useState('');
+  const [addressToCheck, setAddressToCheck] = useState('');
+  const [shouldCheckRole, setShouldCheckRole] = useState(false);
+
+  const { data: hasRoleResult, isLoading: isCheckingRole } = useReadContract({
+    address: CONTRACTS.sourceToken.address as `0x${string}`,
+    abi: CONTRACTS.sourceToken.abi,
+    functionName: 'hasRole',
+    args: [roleToCheck, addressToCheck],
+    query: { enabled: shouldCheckRole && !!roleToCheck && !!addressToCheck },
+  });
+
   useEffect(() => {
     if (isApproveSuccess && step === 'approving') {
       setStep('approved');
@@ -156,6 +181,36 @@ export default function SourceTokenTab() {
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to cancel unlock');
     }
+  };
+
+  const handleSetAuthority = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!newAuthority) {
+      setError('Please enter a new authority address.');
+      return;
+    }
+    if (!address) {
+      setError('Please connect your wallet.');
+      return;
+    }
+    try {
+      await setAuthority({
+        address: CONTRACTS.sourceToken.address as `0x${string}`,
+        abi: CONTRACTS.sourceToken.abi,
+        functionName: 'setAuthority',
+        args: [newAuthority],
+      });
+    } catch (error) {
+      console.error('Error setting authority:', error);
+      setError(error instanceof Error ? error.message : 'Failed to set authority');
+    }
+  };
+
+  const handleCheckRole = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShouldCheckRole(false);
+    setTimeout(() => setShouldCheckRole(true), 0);
   };
 
   return (
@@ -308,6 +363,81 @@ export default function SourceTokenTab() {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* Authority Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Source Token Authority</h2>
+        <div className="mb-4">
+          <span className="font-medium !text-black">Current Authority: </span>
+          {isLoadingAuthority ? (
+            <span className="!text-black">Loading...</span>
+          ) : (
+            <span className="!text-black">{authorityAddress as string}</span>
+          )}
+        </div>
+        <form onSubmit={handleSetAuthority} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">Set New Authority Address</label>
+            <input
+              type="text"
+              value={newAuthority}
+              onChange={(e) => setNewAuthority(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+              disabled={isSettingAuthority || isSettingAuthorityTx}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSettingAuthority || isSettingAuthorityTx}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+          >
+            {isSettingAuthority || isSettingAuthorityTx ? 'Setting...' : 'Set Authority'}
+          </button>
+        </form>
+      </div>
+
+      {/* hasRole Checker Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4 !text-black">Check Role (hasRole)</h2>
+        <form onSubmit={handleCheckRole} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">Role (bytes32 hex)</label>
+            <input
+              type="text"
+              value={roleToCheck}
+              onChange={(e) => setRoleToCheck(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium !text-black mb-1">Address to Check</label>
+            <input
+              type="text"
+              value={addressToCheck}
+              onChange={(e) => setAddressToCheck(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 !text-black placeholder-gray-500"
+              placeholder="0x..."
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isCheckingRole}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed"
+          >
+            {isCheckingRole ? 'Checking...' : 'Check Role'}
+          </button>
+        </form>
+        {shouldCheckRole && !isCheckingRole && hasRoleResult !== undefined && (
+          <div className="mt-4 font-medium !text-black">
+            Result: {hasRoleResult ? 'Has Role' : 'Does NOT have Role'}
           </div>
         )}
       </div>
