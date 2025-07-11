@@ -3,22 +3,22 @@ import { useWriteContract, useReadContract, useWaitForTransactionReceipt } from 
 import { CONTRACTS } from '@/config/contracts';
 import { parseEther } from 'viem';
 
-export default function RegistryTab() {
+export default function RegistryDevTab() {
   const [heartbeatPeriod, setHeartbeatPeriod] = useState('');
   const [heartbeatReward, setHeartbeatReward] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Read current heartbeat period
   const { data: currentHeartbeatPeriod, isLoading: isLoadingHeartbeatPeriod } = useReadContract({
-    address: CONTRACTS.registry.address as `0x${string}`,
-    abi: CONTRACTS.registry.abi,
+    address: CONTRACTS.registryDev.address as `0x${string}`,
+    abi: CONTRACTS.registryDev.abi,
     functionName: 'heartbeatPeriodSeconds',
   });
 
   // Read current heartbeat reward
   const { data: currentHeartbeatReward, isLoading: isLoadingHeartbeatReward } = useReadContract({
-    address: CONTRACTS.registry.address as `0x${string}`,
-    abi: CONTRACTS.registry.abi,
+    address: CONTRACTS.registryDev.address as `0x${string}`,
+    abi: CONTRACTS.registryDev.abi,
     functionName: 'heartbeatReward',
   });
 
@@ -36,8 +36,8 @@ export default function RegistryTab() {
 
   // Read current authority address
   const { data: authorityAddress, isLoading: isLoadingAuthority } = useReadContract({
-    address: CONTRACTS.registry.address as `0x${string}`,
-    abi: CONTRACTS.registry.abi,
+    address: CONTRACTS.registryDev.address as `0x${string}`,
+    abi: CONTRACTS.registryDev.abi,
     functionName: 'authority',
   });
 
@@ -52,8 +52,8 @@ export default function RegistryTab() {
   const [shouldCheckRole, setShouldCheckRole] = useState(false);
 
   const { data: hasRoleResult, isLoading: isCheckingRole } = useReadContract({
-    address: CONTRACTS.registry.address as `0x${string}`,
-    abi: CONTRACTS.registry.abi,
+    address: CONTRACTS.registryDev.address as `0x${string}`,
+    abi: CONTRACTS.registryDev.abi,
     functionName: 'hasRole',
     args: [roleToCheck, addressToCheck],
     query: { enabled: shouldCheckRole && !!roleToCheck && !!addressToCheck },
@@ -79,8 +79,8 @@ export default function RegistryTab() {
     
     try {
       await setHeartbeatPeriodWrite({
-        address: CONTRACTS.registry.address as `0x${string}`,
-        abi: CONTRACTS.registry.abi,
+        address: CONTRACTS.registryDev.address as `0x${string}`,
+        abi: CONTRACTS.registryDev.abi,
         functionName: 'setHeartbeatPeriodSeconds',
         args: [BigInt(heartbeatPeriod)],
       });
@@ -96,8 +96,8 @@ export default function RegistryTab() {
     
     try {
       await setHeartbeatRewardWrite({
-        address: CONTRACTS.registry.address as `0x${string}`,
-        abi: CONTRACTS.registry.abi,
+        address: CONTRACTS.registryDev.address as `0x${string}`,
+        abi: CONTRACTS.registryDev.abi,
         functionName: 'setHeartbeatReward',
         args: [parseEther(heartbeatReward)],
       });
@@ -116,8 +116,8 @@ export default function RegistryTab() {
     }
     try {
       await setAuthority({
-        address: CONTRACTS.registry.address as `0x${string}`,
-        abi: CONTRACTS.registry.abi,
+        address: CONTRACTS.registryDev.address as `0x${string}`,
+        abi: CONTRACTS.registryDev.abi,
         functionName: 'setAuthority',
         args: [newAuthority],
       });

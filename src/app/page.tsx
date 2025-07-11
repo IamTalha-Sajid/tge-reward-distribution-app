@@ -1,15 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
-import TreasuryTab from '@/components/TreasuryTab';
-import SourceTokenTab from '@/components/SourceTokenTab';
-import RegistryTab from '@/components/RegistryTab';
+import { useAccount, useSwitchChain, useChainId } from 'wagmi';
+import RegistryDevTab from '@/components/RegistryDevTab';
+import RegistryProdTab from '@/components/RegistryProdTab';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('source');
+  const [activeTab, setActiveTab] = useState('registry-dev');
   const { isConnected } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const chainId = useChainId();
+
+  // Network IDs
+  const RCADE_TRIALS_CHAIN_ID = 7785; // Dev/testnet
+  const RCADE_MAINNET_CHAIN_ID = 101069; // Prod/mainnet
+
+  // Switch network when tab changes
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const targetChainId = activeTab === 'registry-dev' ? RCADE_TRIALS_CHAIN_ID : RCADE_MAINNET_CHAIN_ID;
+    
+    if (chainId !== targetChainId) {
+      switchChain({ chainId: targetChainId });
+    }
+  }, [activeTab, isConnected, chainId, switchChain]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+  };
 
   return (
     <main className="min-h-screen p-8">
@@ -24,40 +44,29 @@ export default function Home() {
             <div className="flex space-x-4 mb-8">
               <button
                 className={`px-4 py-2 rounded-lg ${
-                  activeTab === 'source'
+                  activeTab === 'registry-dev'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700'
                 }`}
-                onClick={() => setActiveTab('source')}
+                onClick={() => handleTabChange('registry-dev')}
               >
-                Source Token
+                Registry Dev (Testnet)
               </button>
               <button
                 className={`px-4 py-2 rounded-lg ${
-                  activeTab === 'treasury'
+                  activeTab === 'registry-prod'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700'
                 }`}
-                onClick={() => setActiveTab('treasury')}
+                onClick={() => handleTabChange('registry-prod')}
               >
-                Treasury
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg ${
-                  activeTab === 'registry'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-                onClick={() => setActiveTab('registry')}
-              >
-                Registry
+                Registry Prod (Mainnet)
               </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
-              {activeTab === 'source' && <SourceTokenTab />}
-              {activeTab === 'treasury' && <TreasuryTab />}
-              {activeTab === 'registry' && <RegistryTab />}
+              {activeTab === 'registry-dev' && <RegistryDevTab />}
+              {activeTab === 'registry-prod' && <RegistryProdTab />}
             </div>
           </>
         ) : (

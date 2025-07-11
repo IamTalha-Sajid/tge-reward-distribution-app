@@ -28,7 +28,30 @@ const rcadeTrials = {
   testnet: true,
 } as const;
 
-const chains = [rcadeTrials] as const;
+const rcadeMainnet = {
+  id: 101069,
+  name: 'RCade Mainnet',
+  network: 'rcade-mainnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'RCADE',
+    symbol: 'RCADE',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rcade.calderachain.xyz/http'],
+    },
+    public: {
+      http: ['https://rcade.calderachain.xyz/http'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'RCade Explorer', url: 'https://rcade.calderaexplorer.xyz' },
+  },
+  testnet: false,
+} as const;
+
+const chains = [rcadeTrials, rcadeMainnet] as const;
 
 const config = getDefaultConfig({
   appName: 'TGE Reward Distribution',
